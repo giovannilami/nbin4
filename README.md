@@ -4,7 +4,7 @@
 
 The four parts can use different voices or share one. When parts select the same n.b. voice, they play the same player instance and share its sound parameters, as defined by n.b.
 
-> **Status:** Giovanni confirmed that the current build works on norns on November 17, 2026.
+> **Status:** Giovanni confirmed the original four-route MIDI build works on norns on November 17, 2026. Complete cross-script profiles are a new addition and still need hardware testing.
 
 ## Features
 
@@ -15,6 +15,7 @@ The four parts can use different voices or share one. When parts select the same
 - Shared-note tracking when multiple parts play the same note through the same n.b. voice.
 - An **All notes off** control that releases notes started by nbin4.
 - The script's existing MIDI event handler continues receiving messages from the selected port.
+- Save, load and delete complete nbin4 profiles that can be recalled from any loaded script.
 
 ## Requirements
 
@@ -42,6 +43,7 @@ Keep the original `nbin` mod disabled while using nbin4, otherwise the same MIDI
 2. Choose an n.b. voice for each part. The default voice selection is `none`, so select the voices before playing.
 3. Send notes on MIDI channels 1–4. By default, P1 listens to channel 1, P2 to channel 2, and so on.
 4. Adjust the bend range and, for voices that support note modulation, select pressure targets for each part.
+5. To reuse the full setup in another script, save it from **NBIN 4 profiles → Save complete profile**, then select it and choose **Load selected profile** in the other script.
 
 ## Routing
 
@@ -89,7 +91,19 @@ nbin4 currently handles note-on/off, velocity, pitch bend, channel pressure and 
 
 nbin4 adds its controls after the loaded script's `init()` function, following the lifecycle used by nbin. This allows it to run alongside scripts without requiring changes to their source. The mod includes compatibility handling for norns builds that do not expose a native post-init hook.
 
-Because the controls are added after script initialization, a script that reads a pset inside `init()` may read it before nbin4's parameters exist. If the MIDI input or assignments do not restore after loading a pset, set them again in **NBIN 4**. Saving a pset after nbin4 has added its controls includes them.
+### Complete profiles across scripts
+
+The **NBIN 4 profiles** controls save a separate, reusable profile in `dust/data/nbin4/profiles/`. Profiles are shared across scripts on the same norns. Use **Save complete profile** to name or replace a profile, **Load selected profile** to apply it, and **Delete selected profile** to remove it.
+
+A profile includes the selected MIDI input, all four MIDI channel assignments, all four n.b. voice selections, bend ranges, pressure targets and sensitivities, plus the saveable internal parameters of each selected n.b. voice. A voice used by multiple parts is saved once because those parts share the same player and parameter set. Parameters belonging to the currently loaded script are not included.
+
+Voice selectors are saved by voice name, and option parameters by their displayed choice, so profiles do not depend on option-list positions. The MIDI input is matched by its device name, with its original port as a preference. If that device is unavailable, nbin4 loads the rest of the profile and leaves MIDI input disabled. If a voice or one of its parameters is missing, nbin4 skips it and reports that in the matron log.
+
+Profiles are local to the norns device and are not part of a script's ordinary PSET slots. Back up `dust/data/nbin4/profiles/` separately if you want to transfer them to another device.
+
+### Ordinary script PSETs
+
+The usual norns PSET slots remain script-specific. Because nbin4 adds its controls after script initialization, a script that reads a PSET inside `init()` may do so before nbin4's parameters exist. If its nbin4 settings do not restore from that script's PSET, use a complete nbin4 profile instead.
 
 The mod releases its held notes when its MIDI input changes, when the script is replaced, and when norns shuts down. **All notes off** releases only notes tracked by nbin4; it does not call a global n.b. stop that could silence notes from another source.
 
@@ -101,7 +115,10 @@ The mod releases its held notes when its MIDI input changes, when the script is 
 - Assign two parts to the same voice and test same-pitch note overlap, note-off, and **All notes off**.
 - Test pitch bend, channel pressure and key pressure with voices that support them.
 - Confirm that the loaded script still receives MIDI events from the selected port.
-- Load a pset and check whether that script restores parameters added after its `init()` function.
+- Save a complete profile, load a different norns script, and recall it. Confirm that MIDI input, channel routing, all four voice choices, and each selected voice's sound parameters return.
+- Save a profile where two parts share one voice and confirm its internal parameters remain shared after loading.
+- Change the MIDI device order or disconnect the saved input, then load the profile and confirm nbin4 selects the matching device by name or disables the input.
+- Try a profile with a voice mod disabled and confirm the remaining available settings load safely.
 
 ## Development and credits
 
